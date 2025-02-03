@@ -1,2 +1,2 @@
-# nexus_fold
+# nexusfold
 A task scheduler lib in C++
