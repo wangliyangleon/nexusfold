@@ -16,15 +16,15 @@ class TaskScheduler {
     TaskScheduler& apply_dependency(std::string_view prior_task_id,
                                     std::string_view subsequent_task_id);
 
-    enum ExecuteStatus {
+    enum ExecutionStatus {
         execute_policy_not_implemented,
         all_secceed,
         has_failed_task,
         has_unstarted_task
     };
-    enum ExecutePolicy { seq, par };
+    enum ExecutionPolicy { seq, par };
 
-    ExecuteStatus execute(ExecutePolicy execute_policy = seq);
+    ExecutionStatus execute(ExecutionPolicy execution_policy = seq);
 
    private:
     std::unordered_map<std::string_view, std::unique_ptr<TaskBase>> task_map_;

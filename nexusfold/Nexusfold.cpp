@@ -28,8 +28,8 @@ TaskScheduler& TaskScheduler::apply_dependency(
     return *this;
 }
 
-TaskScheduler::ExecuteStatus TaskScheduler::execute(
-    ExecutePolicy execute_policy) {
+TaskScheduler::ExecutionStatus TaskScheduler::execute(
+    ExecutionPolicy execution_policy) {
     std::unordered_map<std::string_view, std::atomic<int>> prior_task_counts;
     std::for_each(std::execution::par_unseq, task_map_.begin(), task_map_.end(),
                   [&prior_task_counts](const auto& id_task_pair) {
@@ -47,16 +47,15 @@ TaskScheduler::ExecuteStatus TaskScheduler::execute(
                           });
                   });
 
-    if (execute_policy == seq) {
-        std::queue<std::string_view> ready_tasks;
-        int processed_task_count = 0;
-
-        for (auto& [task_id, count] : prior_task_counts) {
-            if (count == 0) {
-                ready_tasks.push(task_id);
-            }
+    std::queue<std::string_view> ready_tasks;
+    for (auto& [task_id, count] : prior_task_counts) {
+        if (count == 0) {
+            ready_tasks.push(task_id);
         }
+    }
+    std::atomic<int> processed_task_count = 0;
 
+    if (execution_policy == seq) {
         while (!ready_tasks.empty()) {
             std::string_view current_task_id = ready_tasks.front();
             for (auto subsequent_task_id :
