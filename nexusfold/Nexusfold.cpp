@@ -1,5 +1,8 @@
 #include "Nexusfold.h"
 
+#include <algorithm>
+#include <atomic>
+#include <execution>
 #include <queue>
 #include <stdexcept>
 
@@ -25,40 +28,58 @@ TaskScheduler& TaskScheduler::apply_dependency(
     return *this;
 }
 
-TaskScheduler::EXECUTE_STATUS TaskScheduler::execute() {
-    std::unordered_map<std::string_view, int> prior_task_counts;
-    for (auto& [task_id, task] : task_map_) {
-        prior_task_counts[task_id] = 0;
-    }
-    for (auto& [_, subsequent_task_ids] : subsequent_tasks_map_) {
-        for (auto& task_id : subsequent_task_ids) {
-            prior_task_counts[task_id]++;
-        };
-    }
+TaskScheduler::ExecuteStatus TaskScheduler::execute(
+    ExecutePolicy execute_policy) {
+    std::unordered_map<std::string_view, std::atomic<int>> prior_task_counts;
+    std::for_each(std::execution::par_unseq, task_map_.begin(), task_map_.end(),
+                  [&prior_task_counts](const auto& id_task_pair) {
+                      prior_task_counts[id_task_pair.first] = 0;
+                  });
+    std::for_each(std::execution::par_unseq, subsequent_tasks_map_.begin(),
+                  subsequent_tasks_map_.end(),
+                  [&prior_task_counts](const auto& id_subseqs_pair) {
+                      std::for_each(
+                          std::execution::par_unseq,
+                          id_subseqs_pair.second.begin(),
+                          id_subseqs_pair.second.end(),
+                          [&prior_task_counts](const auto& subseq_task_id) {
+                              prior_task_counts[subseq_task_id]++;
+                          });
+                  });
 
-    std::queue<std::string_view> ready_tasks;
-    int processed_task_count = 0;
-    for (auto& [task_id, count] : prior_task_counts) {
-        if (count == 0) {
-            ready_tasks.push(task_id);
-        }
-    }
+    if (execute_policy == seq) {
+        std::queue<std::string_view> ready_tasks;
+        int processed_task_count = 0;
 
-    while (!ready_tasks.empty()) {
-        std::string_view current_task_id = ready_tasks.front();
-        for (auto subsequent_task_id : subsequent_tasks_map_[current_task_id]) {
-            if (--prior_task_counts[subsequent_task_id] == 0) {
-                ready_tasks.push(subsequent_task_id);
+        for (auto& [task_id, count] : prior_task_counts) {
+            if (count == 0) {
+                ready_tasks.push(task_id);
             }
         }
-        // todo: catch the exception.
-        task_map_[current_task_id]->execute();
-        ready_tasks.pop();
-        processed_task_count++;
-    }
 
-    return processed_task_count == task_map_.size() ? ALL_SUCCEED
-                                                    : HAS_UNSTARTED_TASKS;
+        while (!ready_tasks.empty()) {
+            std::string_view current_task_id = ready_tasks.front();
+            for (auto subsequent_task_id :
+                 subsequent_tasks_map_[current_task_id]) {
+                if (--prior_task_counts[subsequent_task_id] == 0) {
+                    ready_tasks.push(subsequent_task_id);
+                }
+            }
+            // todo: catch the exception.
+            try {
+                task_map_[current_task_id]->execute();
+            } catch (std::exception const& ex) {
+                return has_failed_task;
+            }
+            ready_tasks.pop();
+            processed_task_count++;
+        }
+
+        return processed_task_count == task_map_.size() ? all_secceed
+                                                        : has_unstarted_task;
+    } else {
+        return execute_policy_not_implemented;
+    }
 }
 
 }  // namespace nexusfold

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 
 #include "../nexusfold/Nexusfold.h"
 
@@ -18,6 +19,15 @@ class TestTask : public nexusfold::TaskBase {
    private:
     std::string_view task_name_;
 };
+
+class ExpTask : public nexusfold::TaskBase {
+   protected:
+    void* task_body(void*) override {
+        std::cout << "Hello before I die" << std::endl;
+        throw std::runtime_error("Now I'm dead");
+    }
+};
+
 }  // namespace
 
 int main() {
@@ -34,6 +44,16 @@ int main() {
         .apply_dependency("t2", "t1")
         .apply_dependency("t5", "t1")
         .apply_dependency("t5", "t4");
+    std::cout << task_scheduler.execute() << std::endl;
+
+    // not implemented yet.
+    std::cout << task_scheduler.execute(nexusfold::TaskScheduler::par)
+              << std::endl;
+
+    task_scheduler.apply_dependency("t4", "t5");
+    std::cout << task_scheduler.execute() << std::endl;
+
+    task_scheduler.add_task(std::make_unique<ExpTask>(), "t6");
     std::cout << task_scheduler.execute() << std::endl;
     return 0;
 }
