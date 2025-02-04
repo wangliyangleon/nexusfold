@@ -36,7 +36,10 @@ int main() {
         .add_task(std::make_unique<TestTask>("Task 2"), "t2")
         .add_task(std::make_unique<TestTask>("Task 3"), "t3")
         .add_task(std::make_unique<TestTask>("Task 4"), "t4")
-        .add_task(std::make_unique<TestTask>("Task 5"), "t5")
+        .add_task(std::make_unique<nexusfold::SimpleTask>([]() {
+                      std::cout << "Hello from SimpleTask 5" << std::endl;
+                  }),
+                  "t5")
         // t3->t2->t1
         //     t5---^
         //      |->t4
