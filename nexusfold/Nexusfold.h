@@ -19,6 +19,7 @@ class TaskScheduler {
     enum ExecutionStatus {
         execute_policy_not_implemented,
         all_secceed,
+        has_scheduler_error,
         has_failed_task,
         has_unstarted_task
     };
@@ -27,6 +28,8 @@ class TaskScheduler {
     ExecutionStatus execute(ExecutionPolicy execution_policy = seq);
 
    private:
+    ExecutionStatus execute_seq_();
+    ExecutionStatus execute_par_();
     std::unordered_map<std::string_view, std::unique_ptr<TaskBase>> task_map_;
     std::unordered_map<std::string_view, std::vector<std::string_view>>
         subsequent_tasks_map_;

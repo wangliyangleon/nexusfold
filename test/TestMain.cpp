@@ -46,7 +46,6 @@ int main() {
         .apply_dependency("t5", "t4");
     std::cout << task_scheduler.execute() << std::endl;
 
-    // not implemented yet.
     std::cout << task_scheduler.execute(nexusfold::TaskScheduler::par)
               << std::endl;
 
